@@ -14,6 +14,14 @@
 #include <sys/stat.h>
 
 // clang-format off
+typedef struct
+{
+    uint32_t offset; // This is really stored as 24bits in the table. 
+    int32_t size; // This is signed. Negative numbers denote directories.
+} XenoEntry;
+
+_Static_assert(sizeof(XenoEntry) == 8, "XenoEntry does not match the desired size!");
+
 struct XenoReader
 {
     /// @brief Pointer the the image being read.
@@ -24,6 +32,12 @@ struct XenoReader
 
     /// @brief Stores the disc number from allocation verification.
     int discNumber;
+
+    /// @brief Array of entries.
+    XenoEntry **fileEntries;
+
+    /// @brief This is the number of file entries read.
+    size_t entryCount;
 };
 // clang-format on
 
@@ -165,3 +179,5 @@ bool xeno_read_sector(Sector *sectorOut, XenoReader *reader)
 }
 
 int xeno_get_disc_number(XenoReader *reader) { return reader->discNumber; }
+
+bool xeno_parse_table_of_contents(XenoReader *reader) {}

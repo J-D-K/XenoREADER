@@ -9,6 +9,5 @@ add_executable(${PROJECT_NAME})
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)
 target_sources(${PROJECT_NAME} PRIVATE
-              source/BootRecord.c
               source/main.c
               source/XenoReader.c)

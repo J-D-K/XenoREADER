@@ -54,8 +54,8 @@ typedef struct
     /// @brief This is the stuff you actually want to get to most of the time.
     uint8_t data[DATA_SIZE];
     
-    /// @brief This is the CRC.
-    uint32_t edcCrc;
+    /// @brief I'm not entirely sure what is here. I don't really care about it either unless it becomes a problem. Then I'll care.
+    uint8_t edcCrc[EDC_CRC_SIZE];
 } Sector;
 
 _Static_assert(sizeof(Sector) == SECTOR_SIZE, "Sector struct does not match sector size!");

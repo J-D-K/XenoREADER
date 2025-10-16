@@ -7,7 +7,6 @@
  */
 
 #pragma once
-#include "BootRecord.h"
 #include "Sector.h"
 
 #include <stdbool.h>
@@ -46,6 +45,11 @@ bool xeno_read_sector(Sector *sectorOut, XenoReader *reader);
 /// @param reader Reader to read the disc from.
 /// @return Disc 1 or 2. -1 on failure.
 int xeno_get_disc_number(XenoReader *reader);
+
+/// @brief Parses the table of contents in sector 24 and 24.
+/// @param reader Reader to use to parse the contents of.
+/// @return True on success. False on failure.
+bool xeno_parse_table_of_contents(XenoReader *reader);
 
 #ifdef __cplusplus
 }
