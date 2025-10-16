@@ -74,34 +74,43 @@ XenoReader *xeno_open_image(const char *path)
     FILE *image = fopen(path, "rb");
     if (!image) { goto Label_cleanup; }
 
-    // This is used to read a couple of sectors to verify the disc is a valid Xenogears image.
-    Sector discSector;
-    const bool bootSeek = fseek(image, BOOT_RECORD_SECTOR * SECTOR_SIZE, SEEK_SET) == 0;
-    const bool bootRead = fread(&discSector, 1, SECTOR_SIZE, image) == SECTOR_SIZE;
-    if (!bootRead) { goto Label_cleanup; }
+    // This is scoped so that it doesn't hang around in the stack after it's not needed.
+    {
+        // Here, we read the boot sector and check for the XENOGEARS string.
+        Sector bootSector;
+        const bool bootSeek = fseek(image, BOOT_RECORD_SECTOR * SECTOR_SIZE, SEEK_SET) == 0;
+        const bool bootRead = bootSeek && fread(&bootSector, 1, SECTOR_SIZE, image) == SECTOR_SIZE;
+        if (!bootRead) { goto Label_cleanup; }
 
-    // This is used to pull and copy the "header(?)" from the boot sector.
-    char headerBuffer[STRING_BUFFER_SIZE] = {0};
+        // This is used to pull and copy the "header(?)" from the boot sector.
+        char headerBuffer[STRING_BUFFER_SIZE] = {0};
 
-    // Copy the string into the buffer and .
-    strncpy(headerBuffer, &discSector.data[BOOT_RECORD_OFFSET], XENOGEARS_STRING_LENGTH);
+        // Copy the string into the buffer and .
+        strncpy(headerBuffer, &bootSector.data[BOOT_RECORD_OFFSET], XENOGEARS_STRING_LENGTH);
 
-    const bool isXenogears = strcmp(headerBuffer, BOOT_RECORD_STRING) == 0;
-    if (!isXenogears) { goto Label_cleanup; }
+        const bool isXenogears = strcmp(headerBuffer, BOOT_RECORD_STRING) == 0;
+        if (!isXenogears) { goto Label_cleanup; }
+    }
 
-    // Seek to sector 23 and read it to check which disc we're working with for sure.
-    bool seek             = fseek(image, DISC_IDENTIFICATION_SECTOR * SECTOR_SIZE, SEEK_SET) == 0;
-    const bool sectorRead = seek && fread(&discSector, 1, SECTOR_SIZE, image) == SECTOR_SIZE;
-    if (!sectorRead) { goto Label_cleanup; }
+    // Same as above. Scoped.
+    bool discOne;
+    bool discTwo;
+    {
+        // Seek to sector 23 and read it to check which disc we're working with for sure.
+        Sector discSector;
+        bool seek             = fseek(image, DISC_IDENTIFICATION_SECTOR * SECTOR_SIZE, SEEK_SET) == 0;
+        const bool sectorRead = seek && fread(&discSector, 1, SECTOR_SIZE, image) == SECTOR_SIZE;
+        if (!sectorRead) { goto Label_cleanup; }
 
-    // This is used to read the disc identification string in sector 23.
-    char discBuffer[STRING_BUFFER_SIZE] = {0};
+        // This is used to read the disc identification string in sector 23.
+        char discBuffer[STRING_BUFFER_SIZE] = {0};
 
-    // Copy the string to our local buffer. Compare that buffer to see what disc we're using.
-    strncpy(discBuffer, discSector.data, DISC_STRING_LENGTH);
-    const bool discOne = strcmp(DISC_1_STRING, discBuffer) == 0;
-    const bool discTwo = strcmp(DISC_2_STRING, discBuffer) == 0;
-    if (!discOne && !discTwo) { goto Label_cleanup; }
+        // Copy the string to our local buffer. Compare that buffer to see what disc we're using.
+        strncpy(discBuffer, discSector.data, DISC_STRING_LENGTH);
+        discOne = strcmp(DISC_1_STRING, discBuffer) == 0;
+        discTwo = strcmp(DISC_2_STRING, discBuffer) == 0;
+        if (!discOne && !discTwo) { goto Label_cleanup; }
+    }
 
     // Seek back to the beginning of the image for consistency.
     const bool beginningSeek = fseek(image, 0, SEEK_SET) == 0;
