@@ -19,20 +19,38 @@ struct XenoReader
 };
 // clang-format on
 
-// These are to verify the image before continuing.
+// The following consts and values are used to verify the image before returning the struct.
+
+// This is the size of the buffer used to pull strings from sectors to verify the image.
+#define STRING_BUFFER_SIZE 32
 
 // These are the number of sectors each disc has.
 static const size_t DISC_1_SECTOR_COUNT = 305586;
 static const size_t DISC_2_SECTOR_COUNT = 292815;
 
-// This is the sector that contains the string to determine disc number.
-const size_t DISC_SECTOR = 23;
+// This is a way to determine that the image is a valid Xenogears image. This uses the boot record.
+/// @brief This is the boot record sector.
+static const size_t BOOT_RECORD_SECTOR = 16;
 
-// These are the strings that can be used to *RELIABLY* determine which disc is being targetted. This string in
-// contained in sector 23.
-#define DISC_STRING_LENGTH 16
+/// @brief This is the offset where XENOGEARS appears in the boot record.
+static const size_t BOOT_RECORD_OFFSET = 0x28;
+
+/// @brief This is the string that appears in the boot record.
+static const char *BOOT_RECORD_STRING = "XENOGEARS";
+
+/// @brief This is the size of the string above.
+static const size_t XENOGEARS_STRING_LENGTH = 9;
+
+/// @brief This is the sector that contains the string to identify the disc number.
+static const size_t DISC_IDENTIFICATION_SECTOR = 23;
+
+/// @brief These are the strings that can be used to *RELIABLY* determine which disc is being targetted. These strings
+/// are contained in sector 23.
 static const char *DISC_1_STRING = "DS01_XENOGEARS";
 static const char *DISC_2_STRING = "DS02_XENOGEARS";
+
+/// @brief This is the length of the strings above.
+static const int DISC_STRING_LENGTH = 14;
 
 XenoReader *xeno_open_image(const char *path)
 {
@@ -48,23 +66,40 @@ XenoReader *xeno_open_image(const char *path)
     FILE *image = fopen(path, "rb");
     if (!image) { goto Label_cleanup; }
 
-    // Seek to sector 23 and read it to check which disc we're working with for sure.
+    // This is used to read a couple of sectors to verify the disc is a valid Xenogears image.
     Sector discSector;
-    const bool seek       = fseek(image, DISC_SECTOR * SECTOR_SIZE, SEEK_SET) == 0;
+    const bool bootSeek = fseek(image, BOOT_RECORD_SECTOR * SECTOR_SIZE, SEEK_SET) == 0;
+    const bool bootRead = fread(&discSector, 1, SECTOR_SIZE, image) == SECTOR_SIZE;
+    if (!bootRead) { goto Label_cleanup; }
+
+    // This is used to pull and copy the "header(?)" from the boot sector.
+    char headerBuffer[STRING_BUFFER_SIZE] = {0};
+
+    // Copy the string into the buffer and .
+    strncpy(headerBuffer, &discSector.data[BOOT_RECORD_OFFSET], XENOGEARS_STRING_LENGTH);
+
+    const bool isXenogears = strcmp(headerBuffer, BOOT_RECORD_STRING) == 0;
+    if (!isXenogears) { goto Label_cleanup; }
+
+    // Seek to sector 23 and read it to check which disc we're working with for sure.
+    bool seek             = fseek(image, DISC_IDENTIFICATION_SECTOR * SECTOR_SIZE, SEEK_SET) == 0;
     const bool sectorRead = seek && fread(&discSector, 1, SECTOR_SIZE, image) == SECTOR_SIZE;
     if (!sectorRead) { goto Label_cleanup; }
 
-    // We're going to copy the first part of the sector data and compare the string to help determine disc number.
-    char discBuffer[DISC_STRING_LENGTH] = {0};
+    // This is used to read the disc identification string in sector 23.
+    char discBuffer[STRING_BUFFER_SIZE] = {0};
 
     // Copy the string to our local buffer. Compare that buffer to see what disc we're using.
     strncpy(discBuffer, discSector.data, DISC_STRING_LENGTH);
-
-    bool discOne       = strcmp(DISC_1_STRING, discBuffer) == 0;
+    const bool discOne = strcmp(DISC_1_STRING, discBuffer) == 0;
     const bool discTwo = strcmp(DISC_2_STRING, discBuffer) == 0;
     if (!discOne && !discTwo) { goto Label_cleanup; }
 
-    // I wanted as much of the verification out of the way as possible before allocating this.
+    // Seek back to the beginning of the image for consistency.
+    const bool beginningSeek = fseek(image, 0, SEEK_SET) == 0;
+    if (!beginningSeek) { goto Label_cleanup; }
+
+    // I wanted all of the validation done before this to make this less of a pain.
     XenoReader *reader = (XenoReader *)malloc(sizeof(XenoReader));
     if (!reader) { goto Label_cleanup; }
 
