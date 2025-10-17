@@ -21,7 +21,7 @@ extern "C"
 typedef struct XenoReader XenoReader;
 
 /// @brief Attempts to open a Xenogears disc image.
-/// Does some verification using independent research I've done.
+/// Verifies the image in multiple ways before returning a XenoReader.
 /// @param path Path to the image to attempt to open.
 XenoReader *xeno_open_image(const char *path);
 
