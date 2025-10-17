@@ -15,7 +15,7 @@ The goal of XenoReader is to provide a working C library, optionally with a C++ 
 **Sector Reading** - XenoReader can read sectors from the image into easy-to-use `Sector` structs that make their contents easier to understand and access.
 
 ## Future Work
-Further work is needed to reverse engineer the filesystem. Xenogears, like several other Squaresoft RPGs from this era, does not use a standard ISO-9660 filesystem beyond the main binary and configuration file. This makes accessing and modifying game data challenging.
+Further work is needed to reverse engineer the filesystem. Xenogears, like several other Squaresoft RPGs from this era, does not use a standard ISO-9660 filesystem beyond the main binary and configuration file. This makes accessing and modifying game data challenging. **As of now, anything is this repo is me making guesses and reverse engineering what I can.**
 
 ## Why?
 While games like Final Fantasy IX and Chrono Cross have received modern ports, Xenogears has not. This makes Xenogears difficult to mod and work with.

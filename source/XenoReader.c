@@ -7,6 +7,7 @@
  */
 
 #include "XenoReader.h"
+#include "Sector.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,8 +17,8 @@
 // clang-format off
 typedef struct
 {
-    uint32_t offset; // This is really stored as 24bits in the table. 
-    int32_t size; // This is signed. Negative numbers denote directories.
+    uint32_t sector; // This is really stored as 24 bits. This seems to be the only important part.
+    int32_t size; // I'm not entirely sure this is the size of anything. Nothing lines up if you use this.
 } XenoEntry;
 
 _Static_assert(sizeof(XenoEntry) == 8, "XenoEntry does not match the desired size!");
