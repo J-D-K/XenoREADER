@@ -12,8 +12,6 @@ The goal of XenoReader is to provide a working C library, optionally with a C++ 
 
 **Disc Identification** – XenoReader can reliably determine whether the image is Disc 1 or Disc 2.
 
-**Sector Reading** - XenoReader can read sectors from the image into easy-to-use `Sector` structs that make their contents easier to understand and access.
-
 ## Future Work
 Further work is needed to reverse engineer the filesystem. Xenogears, like several other Squaresoft RPGs from this era, does not use a standard ISO-9660 filesystem beyond the main binary and configuration file. This makes accessing and modifying game data challenging. **As of now, anything in this repo is me making guesses and reverse engineering what I can.**
 
