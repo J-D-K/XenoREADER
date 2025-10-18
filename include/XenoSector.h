@@ -5,7 +5,6 @@
  *      Licensed under the MIT License.
  *      See the included LICENSE file for license and attribution details.
  */
-
 #pragma once
 
 #include "Sector.h"

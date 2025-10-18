@@ -227,6 +227,9 @@ void XenoReader_Close(XenoReader *reader)
     // Bail if NULL is passed.
     if (!reader) { return; }
 
+    // Free the Filesystem tree.
+    if (reader->root) { free_directory_tree(reader->root); }
+
     // Only try to close the file if it's actually open.
     if (reader->image)
     {
@@ -320,5 +323,5 @@ static void free_directory_tree(XenoDir *dir)
         }
     }
 
-    DynamicArray_Free(dir);
+    XenoDir_Free(dir);
 }
