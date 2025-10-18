@@ -3,6 +3,6 @@
 #define __XENO_INTERNAL__
 #include "XenoFileInternal.h"
 
-uint32_t xeno_file_get_sector(const XenoFile *file) { return file->sector; }
+uint32_t XenoFile_GetSector(const XenoFile *file) { return file->sector; }
 
-int32_t xeno_file_get_size(const XenoFile *file) { return file->size; }
+int32_t XenoFile_GetSize(const XenoFile *file) { return file->size; }

@@ -13,8 +13,8 @@ typedef struct XenoFile XenoFile;
 
 /// @brief Returns the sector that contains the beginning of the file.
 /// @param file File to get the sector of.
-uint32_t xeno_file_get_sector(const XenoFile *file);
+uint32_t XenoFile_GetSector(const XenoFile *file);
 
 /// @brief Returns the size of the file passed.
 /// @param file XenoFile to get size of.
-int32_t xeno_file_get_size(const XenoFile *file);
+int32_t XenoFile_GetSize(const XenoFile *file);

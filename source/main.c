@@ -6,14 +6,14 @@
 
 int main(int argc, const char *argv[])
 {
-    XenoReader *xenoReader = xeno_open_image(argv[1]);
+    XenoReader *xenoReader = XenoReader_Open(argv[1]);
     if (!xenoReader)
     {
         printf("xenoReader is NULL!\n");
         return -1;
     }
 
-    xeno_load_process_filesystem(xenoReader);
+    XenoReader_LoadProcessFilesystem(xenoReader);
 
-    xeno_close_image(xenoReader);
+    XenoReader_Close(xenoReader);
 }

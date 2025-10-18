@@ -7,6 +7,7 @@
 #include "XenoFileInternal.h"
 
 #ifdef __XENO_INTERNAL__
+
 // clang-format off
 struct XenoDir
 {
@@ -23,4 +24,5 @@ struct XenoDir
     DynamicArray *files;
 };
 // clang-format on
+
 #endif

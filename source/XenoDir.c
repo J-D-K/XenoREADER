@@ -3,20 +3,20 @@
 #define __XENO_INTERNAL__
 #include "XenoDirInternal.h"
 
-uint32_t xeno_dir_get_sub_dir_count(const XenoDir *dir) { return dir->dirCount; }
+uint32_t XenoDir_GetDubDirCount(const XenoDir *dir) { return dir->dirCount; }
 
-uint32_t xeno_dir_get_file_count(const XenoDir *dir) { return dir->fileCount; }
+uint32_t XenoDir_GetFileCount(const XenoDir *dir) { return dir->fileCount; }
 
-XenoDir *xeno_dir_get_dir_at(const XenoDir *dir, int index)
+XenoDir *XenoDir_GetDirAt(const XenoDir *dir, int index)
 {
     if (index < 0 || index >= (int)dir->dirCount) { return NULL; }
 
-    return (XenoDir *)dynamic_array_get_element_at(dir->subDirs, index);
+    return (XenoDir *)DynamicArray_GetElementAt(dir->subDirs, index);
 }
 
-XenoFile *xeno_dir_get_file_at(const XenoDir *dir, int index)
+XenoFile *XenoDir_GetFileAt(const XenoDir *dir, int index)
 {
     if (index < 0 || index >= (int)dir->fileCount) { return NULL; }
 
-    return (XenoFile *)dynamic_array_get_element_at(dir->files, index);
+    return (XenoFile *)DynamicArray_GetElementAt(dir->files, index);
 }

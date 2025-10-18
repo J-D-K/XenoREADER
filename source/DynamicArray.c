@@ -1,12 +1,16 @@
 #include "DynamicArray.h"
 
-#include <malloc.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+// This is the capacity extended with when the array is getting full.
+#define EXTEND_CAPACITY 64
 
 // clang-format off
 struct DynamicArray
 {
     /// @brief This is the internal array.
-    void **array;
+    unsigned char *array;
 
     /// @brief This is the size of the elements in the array.
     size_t elementSize;
@@ -14,61 +18,54 @@ struct DynamicArray
     /// @brief Current length of the array.
     size_t length;
 
-    /// @brief Function used to free the elements.
-    ElementFreeFunction freeFunction;
+    /// @brief This is the actual capacity.
+    size_t capacity;
 };
 // clang-format on
 
-DynamicArray *dynamic_array_create(size_t elementSize, ElementFreeFunction freeFunction)
+DynamicArray *DynamicArray_Create(size_t elementSize, size_t initialCapacity)
 {
     DynamicArray *dynamicArray = malloc(sizeof(DynamicArray));
     if (!dynamicArray) { return NULL; }
 
-    dynamicArray->array        = NULL;
-    dynamicArray->elementSize  = elementSize;
-    dynamicArray->length       = 0;
-    dynamicArray->freeFunction = freeFunction;
+    dynamicArray->array       = malloc(elementSize * initialCapacity);
+    dynamicArray->elementSize = elementSize;
+    dynamicArray->length      = 0;
+    dynamicArray->capacity    = initialCapacity;
 
     return dynamicArray;
 }
 
 // To do: Revise this.
-void dynamic_array_free(DynamicArray *array)
+void DynamicArray_Free(DynamicArray *array)
 {
-    if (!array || !array->array || array->length <= 0) { return; }
+    if (!array) { return; }
 
-    for (size_t i = 0; i < array->length; i++)
-    {
-        void *pointer = array->array[i];
-        if (!pointer) { continue; }
-
-        if (array->freeFunction) { (array->freeFunction)(pointer); }
-        else { free(pointer); }
-    }
-
-    free(array->array);
+    if (array->array) { free(array->array); }
     free(array);
 }
 
-void *dynamic_array_new(DynamicArray *array)
+void *DynamicArray_New(DynamicArray *array)
 {
     if (!array) { return NULL; }
 
-    // Reallocate array to fit new element.
-    array->array = realloc(array->array, sizeof(void *) * ++array->length);
+    if (array->capacity - array->length <= 2)
+    {
+        array->capacity += EXTEND_CAPACITY;
+        void *newArray = realloc(array->array, array->elementSize * array->capacity);
+        if (!newArray) { return NULL; }
 
-    // Allocate new element.
-    array->array[array->length - 1] = malloc(array->elementSize);
+        array->array = newArray;
+    }
 
-    // Return the element at the "back"
-    return array->array[array->length - 1];
+    return &array->array[array->length++ * array->elementSize];
 }
 
-void *dynamic_array_get_element_at(const DynamicArray *array, int index)
+void *DynamicArray_GetElementAt(const DynamicArray *array, int index)
 {
     if (!array || !array->array || index < 0 || index >= (int)array->length) { return NULL; }
 
-    return array->array[index];
+    return &array->array[index * array->elementSize];
 }
 
-size_t dynamic_array_get_length(const DynamicArray *array) { return array->length; }
+size_t DynamicArray_GetLength(const DynamicArray *array) { return array->length; }
