@@ -10,7 +10,6 @@
 
 #include "DynamicArray.h"
 #include "Sector.h"
-#include "XenoDir.h"
 
 #define __XENO_INTERNAL__
 #include "XenoDirInternal.h"
@@ -77,6 +76,7 @@ static const int DISC_STRING_LENGTH = 14;
 
 // Defined at bottom.
 static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *index);
+static void free_directory_tree(XenoDir *dir);
 
 XenoReader *XenoReader_Open(const char *path)
 {
@@ -215,7 +215,7 @@ XenoReader *XenoReader_Open(const char *path)
 
 Label_cleanup:
     if (tableBuffer) { free(tableBuffer); }
-    if (reader->root) { XenoDir_Free(reader->root); }
+    if (reader->root) { free_directory_tree(reader->root); }
     if (reader) { free(reader); }
     if (image) { fclose(image); }
 
@@ -303,4 +303,22 @@ static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *inde
     }
 
     return true;
+}
+
+static void free_directory_tree(XenoDir *dir)
+{
+    if (!dir) { return; }
+
+    if (dir->files) { DynamicArray_Free(dir->files); }
+
+    if (dir->subDirs)
+    {
+        const int dirCount = DynamicArray_GetLength(dir->subDirs);
+        for (int i = 0; i < dirCount; i++)
+        {
+            free_directory_tree((XenoDir *)DynamicArray_GetElementAt(dir->subDirs, i));
+        }
+    }
+
+    DynamicArray_Free(dir);
 }

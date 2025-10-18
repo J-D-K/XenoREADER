@@ -8,6 +8,7 @@
 
 #pragma once
 #include "Sector.h"
+#include "XenoDir.h"
 #include "XenoSector.h"
 
 #include <stdbool.h>
