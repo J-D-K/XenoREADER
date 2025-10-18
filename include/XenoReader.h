@@ -8,7 +8,7 @@
 
 #pragma once
 #include "Sector.h"
-#include "XenoFileData.h"
+#include "XenoSector.h"
 
 #include <stdbool.h>
 
@@ -21,34 +21,46 @@ extern "C"
 typedef struct XenoReader XenoReader;
 
 /// @brief Attempts to open a Xenogears disc image.
-/// Verifies the image in multiple ways before returning a XenoReader.
 /// @param path Path to the image to attempt to open.
+/// @note Verifies the image in multiple ways before returning a XenoReader.
 XenoReader *xeno_open_image(const char *path);
 
 /// @brief Closes the reader passed.
 /// @param reader Reader to close.
 void xeno_close_image(XenoReader *reader);
 
-/// @brief Shortcut function to *reliable* determine the disc number.
-/// @param reader Reader to read the disc from.
+/// @brief Shortcut function to return the disc number fetched during allocation.
+/// @param reader Reader to get disc number from.
 /// @return Disc 1 or 2. -1 on failure.
-int xeno_get_disc_number(XenoReader *reader);
+int xeno_get_disc_number(const XenoReader *reader);
 
-/// @brief Parses the table of contents in sector 24 (possible 25 too?)
-/// @param reader Reader to use to parse the contents of.
+/// @brief Returns the total sector count of the image.
+/// @param reader Reader to get count of.
+/// @return Sector count.
+size_t xeno_get_sector_count(const XenoReader *reader);
+
+/// @brief Seeks to the sector passed.
+/// @param reader Reader to seek with.
+/// @param sectorNumber Sector number to seek to.
 /// @return True on success. False on failure.
-bool xeno_parse_table_of_contents(XenoReader *reader);
+bool xeno_seek_to_sector(XenoReader *reader, size_t sectorNumber);
 
-/// @brief Goes to the first sector containing the first "directory" (They don't really exist).
-/// @param reader Reader to use.
+/// @brief Reads the next sector to the Sector struct passed.
+/// @param reader XenoReader to read from.
+/// @param sectorOut Sector to read data into.
 /// @return True on success. False on failure.
-bool xeno_go_to_first_directory(XenoReader *reader);
+bool xeno_read_raw_sector(XenoReader *reader, Sector *sectorOut);
 
-/// @brief Goes to the next sector containing the next "directory".
-/// @param reader Reader to use.
+/// @brief Reads the current sector into a XenoSector for easier
+/// @param reader Reader to read the sector with.
+/// @param sectorOut XenoSector struct to read to.
 /// @return True on success. False on failure.
-bool xeno_go_to_next_directory(XenoReader *reader);
+bool xeno_read_xeno_sector(XenoReader *reader, XenoSector *sectorOut);
 
+/// @brief Loads and processes the hidden filesystem in the Xenogears image.
+/// @param reader Reader to process the filesystem for.
+/// @return True on success. False on failure.
+bool xeno_load_process_filesystem(XenoReader *reader);
 
 #ifdef __cplusplus
 }

@@ -51,14 +51,14 @@ typedef struct
     /// @brief These are the sub headers.
     SectorSubHeader subHeader[2];
     
-    /// @brief This is the stuff you actually want to get to most of the time.
+    /// @brief This is the raw sector data.
     uint8_t data[DATA_SIZE];
     
     /// @brief I'm not entirely sure what is here. I don't really care about it either unless it becomes a problem. Then I'll care.
     uint8_t edcCrc[EDC_CRC_SIZE];
 } Sector;
 
-_Static_assert(sizeof(Sector) == SECTOR_SIZE, "Sector struct does not match sector size!");
+static_assert(sizeof(Sector) == SECTOR_SIZE, "Sector struct does not match sector size!");
 
 #ifdef __cplusplus
 }
