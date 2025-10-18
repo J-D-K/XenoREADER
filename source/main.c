@@ -13,7 +13,5 @@ int main(int argc, const char *argv[])
         return -1;
     }
 
-    XenoReader_LoadProcessFilesystem(xenoReader);
-
     XenoReader_Close(xenoReader);
 }

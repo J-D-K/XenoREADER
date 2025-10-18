@@ -62,6 +62,10 @@ bool XenoReader_ReadXenoSector(XenoReader *reader, XenoSector *sectorOut);
 /// @return True on success. False on failure.
 bool XenoReader_LoadProcessFilesystem(XenoReader *reader);
 
+/// @brief Returns the root "hidden" directory.
+/// @param reader Reader to return the root filesystem of.
+XenoDir *XenoReader_GetRootDirectory(XenoReader *reader);
+
 #ifdef __cplusplus
 }
 #endif

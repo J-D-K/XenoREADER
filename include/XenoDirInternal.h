@@ -11,12 +11,6 @@
 // clang-format off
 struct XenoDir
 {
-    /// @brief This stores sub directory count.
-    uint32_t dirCount;
-
-    /// @brief This stores the file count.
-    uint32_t fileCount;
-
     /// @brief Sub directory array.
     DynamicArray *subDirs;
 

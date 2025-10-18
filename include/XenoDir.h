@@ -12,6 +12,13 @@
 
 typedef struct XenoDir XenoDir;
 
+/// @brief Creates a new XenoDir with the default initial capacity.
+XenoDir *XenoDir_Create();
+
+/// @brief Frees the XenoDir.
+/// @param dir Dir to free.
+void XenoDir_Free(XenoDir *dir);
+
 /// @brief Returns the subdirectory count.
 /// @param dir Directory to get subdirectory count of.
 uint32_t XenoDir_GetDubDirCount(const XenoDir *dir);

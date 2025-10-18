@@ -38,13 +38,12 @@ struct XenoReader
     /// @brief Stores the disc number from allocation verification.
     int discNumber;
 
-    /// @brief This is the root directory of the hidden disc filesystem.
-    XenoDir *rootDir;
+    /// @brief This is the root of the filesystem.
+    XenoDir *root;
 };
 // clang-format on
 
 // The following consts and values are used to verify the image before returning the struct.
-
 // This is the size of the buffer used to pull strings from sectors to verify the image.
 #define STRING_BUFFER_SIZE 32
 
@@ -76,16 +75,8 @@ static const char *DISC_2_STRING = "DS02_XENOGEARS";
 /// @brief This is the length of the strings above.
 static const int DISC_STRING_LENGTH = 14;
 
-// Defined at bottom. This is needed for recursive FS layout generation.
-
-/// @brief Adds a subdirectory to the directory passed.
-/// @param dir Directory to add the entry to.
-/// @param fsArray Pointer to dynamic array containing the filesystem entries.
-/// @param index Index of the entry containing the data to create a subdirectory with.
-/// @return True on success. False on failure.
-static bool add_sub_directory_to_directory(XenoDir *dir, const DynamicArray *fsArray, int *index);
-
-static void debug_print_XenoDir(XenoDir *dir);
+// Defined at bottom.
+static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *index);
 
 XenoReader *XenoReader_Open(const char *path)
 {
@@ -150,18 +141,83 @@ XenoReader *XenoReader_Open(const char *path)
     reader->image       = image;
     reader->sectorCount = sectorCount;
     reader->discNumber  = discOne ? 1 : 2;
-    reader->rootDir     = malloc(sizeof(XenoDir));
-    if (!reader->rootDir) { goto Label_cleanup; }
+    reader->root        = XenoDir_Create();
+    if (!reader->root) { goto Label_cleanup; }
 
-    // We know these become huge-ish
-    reader->rootDir->subDirs = DynamicArray_Create(sizeof(XenoDir), 512);
-    reader->rootDir->files   = DynamicArray_Create(sizeof(XenoFile), 512);
+    // Seek to where the filesystem/table is.
+    if (!XenoReader_SeekToSector(reader, 24)) { goto Label_cleanup; }
+
+    // The table takes up 16 sectors. We're going to buffer them all.
+    const int tableBufferSize  = 16 * DATA_SIZE;
+    unsigned char *tableBuffer = malloc(tableBufferSize);
+    for (int i = 0; i < 16; i++)
+    {
+        Sector sector = {0};
+        if (!XenoReader_ReadRawSector(reader, &sector)) { goto Label_cleanup; }
+
+        // Copy it the the buffer.
+        memcpy(&tableBuffer[i * DATA_SIZE], sector.data, DATA_SIZE);
+    }
+
+    // We're going to read all of the entries to this. This initial capacity is to prevent reallocations.
+    DynamicArray *fsArray = DynamicArray_Create(sizeof(FilesystemEntry), 4096);
+    if (!fsArray) { goto Label_cleanup; }
+
+    for (int i = 0; i < tableBufferSize; i += 7)
+    {
+        // What we're reading to.
+        uint32_t sector = 0; // This is actually stored as a 24bit value.
+        int32_t size    = 0;
+
+        // Positions in the buffer.
+        const void *sectorPosition = &tableBuffer[i];
+        const void *sizePosition   = &tableBuffer[i + 3];
+
+        // Copy them.
+        memcpy(&sector, sectorPosition, 3);
+        memcpy(&size, sizePosition, 4);
+        // If it has no sector, skip it. There are files that have 0 as a size. Not sure what purpose that serves yet.
+        if (sector == 0) { continue; }
+
+        // Add it to our array.
+        FilesystemEntry *entry = (FilesystemEntry *)DynamicArray_New(fsArray);
+        if (!entry) { goto Label_cleanup; }
+
+        entry->sector = sector;
+        entry->size   = size;
+    }
+
+    // This isn't needed anymore.
+    free(tableBuffer);
+
+    // We need to start the root here. The rest are recursive.
+    int index               = 0;
+    const int fsArrayLength = DynamicArray_GetLength(fsArray);
+    while (index < fsArrayLength)
+    {
+        const FilesystemEntry *entry = DynamicArray_GetElementAt(fsArray, index);
+        // Negative size denotes a "directory".
+        if (entry->size < 0) { read_array_to_directory(reader->root, fsArray, &index); }
+        else {
+            // Add a new file.
+            XenoFile *file = (XenoFile *)DynamicArray_New(reader->root->files);
+
+            // Assign.
+            file->sector = entry->sector;
+            file->size   = entry->size;
+            ++index;
+        }
+    }
+
+    DynamicArray_Free(fsArray);
 
     return reader;
 
 Label_cleanup:
-    if (image) { fclose(image); }
+    if (tableBuffer) { free(tableBuffer); }
+    if (reader->root) { XenoDir_Free(reader->root); }
     if (reader) { free(reader); }
+    if (image) { fclose(image); }
 
     return NULL;
 }
@@ -203,139 +259,48 @@ bool XenoReader_ReadXenoSector(XenoReader *reader, XenoSector *sectorOut)
     return fread(sectorOut, 1, SECTOR_SIZE, reader->image) == SECTOR_SIZE;
 }
 
-bool XenoReader_LoadProcessFilesystem(XenoReader *reader)
+XenoDir *XenoReader_GetRootDirectory(XenoReader *reader) { return reader->root; }
+
+static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *index)
 {
-    // Start by seeking to sector 24.
-    if (!XenoReader_SeekToSector(reader, 24)) { return false; }
-
-    // The table is 16 sectors long. We need a buffer to load and store that.
-    const size_t fsBufferLength = 16 * DATA_SIZE;
-    unsigned char *fsBuffer     = malloc(fsBufferLength);
-
-    // Loop and read the entire file table to the buffer.
-    for (size_t i = 0; i < 16; i++)
-    {
-        Sector sector;
-        if (!XenoReader_ReadRawSector(reader, &sector)) { return false; };
-
-        memcpy(&fsBuffer[i * DATA_SIZE], sector.data, DATA_SIZE);
-    }
-
-    // Going to read the entries into one of these since it's easier.
-    DynamicArray *fsArray =
-        DynamicArray_Create(sizeof(FilesystemEntry),
-                            4096); // This array is really large. The initial is to cut down on allocations.
-    for (size_t i = 0; i < fsBufferLength; i += 7)
-    {
-        // Going to copy/read these first to ensure we only allocated what's needed.
-        uint32_t sector = 0;
-        int32_t size    = 0;
-
-        // Copy from the buffer.
-        memcpy(&sector, &fsBuffer[i], 3);
-        memcpy(&size, &fsBuffer[i + 3], 4);
-        if (sector == 0 || size == 0) { continue; }
-
-        // Create a new entry.
-        FilesystemEntry *newEntry = (FilesystemEntry *)DynamicArray_New(fsArray);
-
-        // Assign
-        newEntry->sector = sector;
-        newEntry->size   = size;
-    }
-
-    // Fill out the root. The add_sub_directory_to_directory is recursive, but the root cannot really use that for now?
-    XenoDir *rootDir        = reader->rootDir;
-    const int fsArrayLength = DynamicArray_GetLength(fsArray);
-    for (int index = 0; index < fsArrayLength;)
-    {
-        const FilesystemEntry *entry = DynamicArray_GetElementAt(fsArray, index);
-        if (entry->size < 0)
-        {
-            ++rootDir->dirCount;
-            add_sub_directory_to_directory(reader->rootDir, fsArray, &index);
-        }
-        else
-        {
-            ++rootDir->fileCount;
-            XenoFile *newFile = (XenoFile *)DynamicArray_New(reader->rootDir->files);
-            newFile->sector   = entry->sector;
-            newFile->size     = entry->size;
-            ++index;
-        }
-    }
-
-    // We're done with this now.
-    free(fsBuffer);
-
-    debug_print_XenoDir(reader->rootDir);
-
-    DynamicArray_Free(fsArray);
-}
-
-static bool add_sub_directory_to_directory(XenoDir *dir, const DynamicArray *fsArray, int *index)
-{
-    // Grab the entry and ensure it's a directory.
-    const FilesystemEntry *entry = (const FilesystemEntry *)DynamicArray_GetElementAt(fsArray, *index);
+    // Grab the entry and ensure it's an array.
+    const FilesystemEntry *entry = (const FilesystemEntry *)DynamicArray_GetElementAt(array, *index);
     if (entry->size >= 0) { return false; }
 
-    // This will align to the first file inside the directory.
+    // Increment the index and invert the size to get the total entries.
     ++*index;
+    const int entryCount = -(entry->size);
 
-    // Allocate the new sub directory.
+    // Calculate where the end of the directory is.
+    const int directoryEnd = *index + entryCount;
+
+    // Add the new subDir to the incoming dir since directory is confirmed.
     XenoDir *subDir = (XenoDir *)DynamicArray_New(dir->subDirs);
-    if (!subDir) { return false; }
-
-    // Sub directory needs these too.
     subDir->subDirs = DynamicArray_Create(sizeof(XenoDir), 32);
     subDir->files   = DynamicArray_Create(sizeof(XenoFile), 32);
 
-    // Invert the size for directories.
-    const int entryCount = -entry->size;
-    const int end        = *index + entryCount;
-
-    for (int i = *index; i < end;)
+    // Loop. This is recursive.
+    for (; *index < directoryEnd;)
     {
-        const FilesystemEntry *subEntry = (const FilesystemEntry *)DynamicArray_GetElementAt(fsArray, i);
-        if (!subEntry) { continue; }
+        const FilesystemEntry *subEntry = (const FilesystemEntry *)DynamicArray_GetElementAt(array, *index);
 
+        // Same as above.
         if (subEntry->size < 0)
         {
-            ++subDir->dirCount;
-            add_sub_directory_to_directory(subDir, fsArray, index);
-
-            i += entryCount;
-            index += entryCount;
+            if (!read_array_to_directory(subDir, array, index)) { return false; }
         }
-        else
-        {
-            ++subDir->fileCount;
-            XenoFile *newFile = (XenoFile *)DynamicArray_New(subDir->files);
-            newFile->sector   = subEntry->sector;
-            newFile->size     = subEntry->size;
+        else {
+            // Create new file entry.
+            XenoFile *file = (XenoFile *)DynamicArray_New(subDir->files);
 
-            *index++;
-            i++;
+            // Copy the array values to the new file.
+            file->sector = subEntry->sector;
+            file->size   = subEntry->size;
+
+            // Increment index.
+            ++*index;
         }
     }
+
     return true;
-}
-
-void debug_print_XenoDir(XenoDir *dir)
-{
-    printf("debug_print_XenoDir\n");
-
-    const size_t dirCount  = XenoDir_GetDubDirCount(dir);
-    const size_t fileCount = XenoDir_GetFileCount(dir);
-    printf("dirCount = %u\nfileCount = %u\n", dirCount, fileCount);
-
-    for (size_t i = 0; i < dirCount; i++)
-    {
-        printf("SubDir %u:\n", i);
-
-        XenoDir *subDir = XenoDir_GetDirAt(dir, i);
-        debug_print_XenoDir(subDir);
-    }
-
-    // for (size_t i = 0; i < fileCount; i++) { printf("\t\nFile %u\n", i); }
 }
