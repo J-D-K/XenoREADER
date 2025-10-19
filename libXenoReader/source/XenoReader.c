@@ -25,7 +25,7 @@ typedef struct
 {
     uint32_t sector;
     int32_t size;
-} FilesystemEntry;
+} FsEntry;
 
 struct XenoReader
 {
@@ -160,7 +160,7 @@ XenoReader *XenoReader_Open(const char *path)
     }
 
     // We're going to read all of the entries to this. This initial capacity is to prevent reallocations.
-    DynamicArray *fsArray = DynamicArray_Create(sizeof(FilesystemEntry), 4096);
+    DynamicArray *fsArray = DynamicArray_Create(sizeof(FsEntry), 4096);
     if (!fsArray) { goto Label_cleanup; }
 
     for (int i = 0; i < tableBufferSize; i += 7)
@@ -182,7 +182,7 @@ XenoReader *XenoReader_Open(const char *path)
         if (sector == 0) { continue; }
 
         // Add it to our array.
-        FilesystemEntry *entry = (FilesystemEntry *)DynamicArray_New(fsArray);
+        FsEntry *entry = (FsEntry *)DynamicArray_New(fsArray);
         if (!entry) { goto Label_cleanup; }
 
         entry->sector = sector;
@@ -197,7 +197,7 @@ XenoReader *XenoReader_Open(const char *path)
     const int fsArrayLength = DynamicArray_GetLength(fsArray);
     while (index < fsArrayLength)
     {
-        const FilesystemEntry *entry = (const FilesystemEntry *)DynamicArray_GetElementAt(fsArray, index);
+        const FsEntry *entry = (const FsEntry *)DynamicArray_GetElementAt(fsArray, index);
 
         // Negative size denotes a "directory".
         if (entry->size < 0) { read_array_to_directory(reader->root, fsArray, &index); }
@@ -302,7 +302,7 @@ Label_cleanup:
 static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *index)
 {
     // Grab the entry and ensure it's an array.
-    const FilesystemEntry *entry = (const FilesystemEntry *)DynamicArray_GetElementAt(array, *index);
+    const FsEntry *entry = (const FsEntry *)DynamicArray_GetElementAt(array, *index);
     if (entry->size >= 0) { return false; }
 
     // Increment the index and invert the size to get the total entries.
@@ -320,7 +320,7 @@ static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *inde
     // Loop. This is recursive.
     for (; *index < directoryEnd;)
     {
-        const FilesystemEntry *subEntry = (const FilesystemEntry *)DynamicArray_GetElementAt(array, *index);
+        const FsEntry *subEntry = (const FsEntry *)DynamicArray_GetElementAt(array, *index);
 
         // Same as above.
         if (subEntry->size < 0 && !read_array_to_directory(subDir, array, index)) { return false; }
