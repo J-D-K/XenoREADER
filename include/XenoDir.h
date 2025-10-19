@@ -21,7 +21,7 @@ void XenoDir_Free(XenoDir *dir);
 
 /// @brief Returns the subdirectory count.
 /// @param dir Directory to get subdirectory count of.
-uint32_t XenoDir_GetDubDirCount(const XenoDir *dir);
+uint32_t XenoDir_GetSubDirCount(const XenoDir *dir);
 
 /// @brief Returns the count of files contained within the directory.
 /// @param dir Dir to get file count of.

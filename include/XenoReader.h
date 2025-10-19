@@ -7,8 +7,8 @@
  */
 #pragma once
 #include "Sector.h"
+#include "XenoBuffer.h"
 #include "XenoDir.h"
-#include "XenoSector.h"
 
 #include <stdbool.h>
 
@@ -51,20 +51,15 @@ bool XenoReader_SeekToSector(XenoReader *reader, size_t sectorNumber);
 /// @return True on success. False on failure.
 bool XenoReader_ReadRawSector(XenoReader *reader, Sector *sectorOut);
 
-/// @brief Reads the current sector into a XenoSector for easier
-/// @param reader Reader to read the sector with.
-/// @param sectorOut XenoSector struct to read to.
-/// @return True on success. False on failure.
-bool XenoReader_ReadXenoSector(XenoReader *reader, XenoSector *sectorOut);
-
-/// @brief Loads and processes the hidden filesystem in the Xenogears image.
-/// @param reader Reader to process the filesystem for.
-/// @return True on success. False on failure.
-bool XenoReader_LoadProcessFilesystem(XenoReader *reader);
-
 /// @brief Returns the root "hidden" directory.
 /// @param reader Reader to return the root filesystem of.
 XenoDir *XenoReader_GetRootDirectory(XenoReader *reader);
+
+/// @brief Reads the passed file from the disc image and returns it in a buffer.
+/// @param reader Reader to use to read the data.
+/// @param file File to read from the image.
+/// @return Buffer containing the file. Since this is a PS1 game in 2025, I'm not concerned about RAM usage.
+XenoBuffer *XenoReader_ReadFile(XenoReader *reader, const XenoFile *file);
 
 #ifdef __cplusplus
 }

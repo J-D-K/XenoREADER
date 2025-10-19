@@ -33,7 +33,7 @@ void XenoDir_Free(XenoDir *dir)
     free(dir);
 }
 
-uint32_t XenoDir_GetDubDirCount(const XenoDir *dir) { return DynamicArray_GetLength(dir->subDirs); }
+uint32_t XenoDir_GetSubDirCount(const XenoDir *dir) { return DynamicArray_GetLength(dir->subDirs); }
 
 uint32_t XenoDir_GetFileCount(const XenoDir *dir) { return DynamicArray_GetLength(dir->files); }
 

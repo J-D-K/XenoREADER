@@ -14,6 +14,7 @@
 #define __XENO_INTERNAL__
 #include "XenoDirInternal.h"
 
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -193,9 +194,20 @@ XenoReader *XenoReader_Open(const char *path)
     // We need to start the root here. The rest are recursive.
     int index               = 0;
     const int fsArrayLength = DynamicArray_GetLength(fsArray);
+
+    FILE *debugFile = fopen("fsArray.txt", "w");
+    for (int i = 0; i < fsArrayLength; i++)
+    {
+        const FilesystemEntry *entry = (const FilesystemEntry *)DynamicArray_GetElementAt(fsArray, i);
+
+        fprintf(debugFile, "Entry[%i]:\n\tOffset?: %i\n\tSize: %i\n", i, entry->sector, entry->size);
+    }
+    fclose(debugFile);
+
     while (index < fsArrayLength)
     {
-        const FilesystemEntry *entry = DynamicArray_GetElementAt(fsArray, index);
+        const FilesystemEntry *entry = (const FilesystemEntry *)DynamicArray_GetElementAt(fsArray, index);
+
         // Negative size denotes a "directory".
         if (entry->size < 0) { read_array_to_directory(reader->root, fsArray, &index); }
         else {
@@ -257,12 +269,43 @@ bool XenoReader_ReadRawSector(XenoReader *reader, Sector *sectorOut)
     return fread(sectorOut, 1, SECTOR_SIZE, reader->image) == SECTOR_SIZE;
 }
 
-bool XenoReader_ReadXenoSector(XenoReader *reader, XenoSector *sectorOut)
-{
-    return fread(sectorOut, 1, SECTOR_SIZE, reader->image) == SECTOR_SIZE;
-}
-
 XenoDir *XenoReader_GetRootDirectory(XenoReader *reader) { return reader->root; }
+
+XenoBuffer *XenoReader_ReadFile(XenoReader *reader, const XenoFile *file)
+{
+    if (!XenoReader_SeekToSector(reader, file->sector)) { goto Label_cleanup; }
+
+    // Allocate and setup buffer.
+    XenoBuffer *buffer = malloc(sizeof(XenoBuffer));
+    if (!buffer) { return NULL; }
+
+    buffer->data = malloc(file->size);
+    if (!buffer->data) { goto Label_cleanup; }
+    buffer->size = file->size;
+
+    const int sectorCount = ceil((double)file->size / (double)DATA_SIZE);
+
+    for (int i = 0; i < sectorCount; i++)
+    {
+        Sector sector = {0};
+        XenoReader_ReadRawSector(reader, &sector);
+
+        // This is what the offset will be after the next sector is copied.
+        const int currentOffset = i * DATA_SIZE;
+        const int endOffset     = currentOffset + DATA_SIZE;
+        const int dataSize      = endOffset > buffer->size ? buffer->size - currentOffset : DATA_SIZE;
+
+        memcpy(&buffer->data[i * DATA_SIZE], sector.data, dataSize);
+    }
+
+    return buffer;
+
+Label_cleanup:
+    if (buffer->data) { free(buffer->data); }
+    if (buffer) { free(buffer); }
+
+    return NULL;
+}
 
 static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *index)
 {
@@ -288,10 +331,7 @@ static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *inde
         const FilesystemEntry *subEntry = (const FilesystemEntry *)DynamicArray_GetElementAt(array, *index);
 
         // Same as above.
-        if (subEntry->size < 0)
-        {
-            if (!read_array_to_directory(subDir, array, index)) { return false; }
-        }
+        if (subEntry->size < 0 && !read_array_to_directory(subDir, array, index)) { return false; }
         else {
             // Create new file entry.
             XenoFile *file = (XenoFile *)DynamicArray_New(subDir->files);
@@ -311,8 +351,6 @@ static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *inde
 static void free_directory_tree(XenoDir *dir)
 {
     if (!dir) { return; }
-
-    if (dir->files) { DynamicArray_Free(dir->files); }
 
     if (dir->subDirs)
     {

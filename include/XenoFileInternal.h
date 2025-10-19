@@ -12,9 +12,6 @@
 // clang-format off
 struct XenoFile
 {
-    /// @brief This is the index of the file within its directory.
-    uint32_t index;
-
     /// @brief This is the sector where the file data begins.
     uint32_t sector;
 

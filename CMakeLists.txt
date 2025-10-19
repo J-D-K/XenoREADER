@@ -12,6 +12,7 @@ target_compile_options(${PROJECT_NAME} PRIVATE -O2 -Werror)
 target_sources(${PROJECT_NAME} PRIVATE
               source/DynamicArray.c
               source/main.c
+              source/XenoBuffer.c
               source/XenoDir.c
               source/XenoFile.c
               source/XenoReader.c)
