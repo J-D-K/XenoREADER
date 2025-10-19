@@ -4,33 +4,69 @@
 #include <string.h>
 #include <sys/stat.h>
 
+// This is the buffer size for paths.
 #define PATH_BUFFER_SIZE 0xFF
 
-static void extract_directory(XenoReader *reader, const XenoDir *dir, const char *target);
+// This is a recursive function to extract the contents of the disc image.
+static void extract_directory(XenoReader *reader, const XenoDir *dir, const char *target, bool resetCount);
+
+// This is so I don't need to change this when switching OS's
+static inline void create_directory(const char *path)
+{
+#ifdef _WIN32
+    mkdir(path);
+#elif __linux__
+    mkdir(path, 0777);
+#endif
+}
 
 int main(int argc, const char *argv[])
 {
-    XenoReader *xenoReader = XenoReader_Open(argv[1]);
-    if (!xenoReader)
+    printf("--- XenoREADER Version 0.1 ---\n\n");
+    if (argc <= 1)
     {
-        printf("xenoReader is NULL!\n");
+        printf("Usage: ./XenoREADER \"[path/to/XenogearsDisc1.bin]\" \"[path/to/XenogearsDisc2.bin]\"\n");
         return -1;
     }
 
-    char outputDir[PATH_BUFFER_SIZE] = {0};
-    snprintf(outputDir, PATH_BUFFER_SIZE, "./Xenogears_Disc_%i", XenoReader_GetDiscNumber(xenoReader));
-    mkdir(outputDir, 0777);
+    for (int i = 1; i < argc; i++)
+    {
+        printf("Opening \"%s\" and verifying image... ", argv[i]);
+        XenoReader *xenoReader = XenoReader_Open(argv[i]);
 
-    XenoDir *gearsRoot = XenoReader_GetRootDirectory(xenoReader);
-    extract_directory(xenoReader, gearsRoot, outputDir);
+        if (!xenoReader)
+        {
+            printf("File is not a valid Xenogears image!\n");
+            continue;
+        }
 
-    XenoReader_Close(xenoReader);
-    printf("No segfault?\n");
+        printf("Xenogears Disc #%i detected.\n", XenoReader_GetDiscNumber(xenoReader));
+        printf("Begin extracting contents...\n");
+
+        XenoDir *root = XenoReader_GetRootDirectory(xenoReader);
+        if (!root)
+        {
+            printf("Root directory is NULL!");
+            continue;
+        }
+
+        // This is where we begin and put the root directory.
+        char outputPath[PATH_BUFFER_SIZE] = {0};
+        snprintf(outputPath, PATH_BUFFER_SIZE, "./Xenogears_Disc_%i", XenoReader_GetDiscNumber(xenoReader));
+        create_directory(outputPath);
+
+        extract_directory(xenoReader, root, outputPath, true);
+
+        XenoReader_Close(xenoReader);
+    }
+
+    return 0;
 }
 
-static void extract_directory(XenoReader *reader, const XenoDir *dir, const char *target)
+static void extract_directory(XenoReader *reader, const XenoDir *dir, const char *target, bool resetCount)
 {
     static int dirCount = 0;
+    if (resetCount) { dirCount = 0; }
 
     char outputPath[PATH_BUFFER_SIZE] = {0};
     // 0 is always the root. This will make this less confusing IMO.
@@ -39,10 +75,12 @@ static void extract_directory(XenoReader *reader, const XenoDir *dir, const char
         snprintf(outputPath, PATH_BUFFER_SIZE, "%s/DISC_ROOT", target);
         ++dirCount;
     }
-    else { snprintf(outputPath, PATH_BUFFER_SIZE, "%s/DIR_%04d", target, dirCount++); }
+    else {
+        snprintf(outputPath, PATH_BUFFER_SIZE, "%s/DIR_%04d", target, dirCount++);
+    }
 
     // Ensure the end output path exists.
-    mkdir(outputPath, 0777);
+    mkdir(outputPath);
 
     // Need these to loop.
     const int subDirs = XenoDir_GetSubDirCount(dir);
@@ -52,7 +90,7 @@ static void extract_directory(XenoReader *reader, const XenoDir *dir, const char
     {
         printf("Opening sub-directory %i...\n", i);
         const XenoDir *subDir = XenoDir_GetDirAt(dir, i);
-        extract_directory(reader, subDir, outputPath);
+        extract_directory(reader, subDir, outputPath, false);
     }
 
     for (int i = 0; i < files; i++)

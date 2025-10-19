@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.30)
 
-project(xenoreader)
+project(XenoREADER)
 
 set(CMAKE_C_STANDARD 23)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -15,4 +15,4 @@ target_sources(${PROJECT_NAME} PRIVATE
               source/XenoDir.c
               source/XenoFile.c
               source/XenoReader.c)
-# target_link_options(${PROJECT_NAME} PRIVATE -s)
+target_link_options(${PROJECT_NAME} PRIVATE -s -static-libgcc)
