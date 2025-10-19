@@ -19,7 +19,7 @@ int main(int argc, const char *argv[])
 
     char outputDir[PATH_BUFFER_SIZE] = {0};
     snprintf(outputDir, PATH_BUFFER_SIZE, "./Xenogears_Disc_%i", XenoReader_GetDiscNumber(xenoReader));
-    mkdir(outputDir);
+    mkdir(outputDir, 0777);
 
     XenoDir *gearsRoot = XenoReader_GetRootDirectory(xenoReader);
     extract_directory(xenoReader, gearsRoot, outputDir);
@@ -39,12 +39,10 @@ static void extract_directory(XenoReader *reader, const XenoDir *dir, const char
         snprintf(outputPath, PATH_BUFFER_SIZE, "%s/DISC_ROOT", target);
         ++dirCount;
     }
-    else {
-        snprintf(outputPath, PATH_BUFFER_SIZE, "%s/DIR_%i", target, dirCount++);
-    }
+    else { snprintf(outputPath, PATH_BUFFER_SIZE, "%s/DIR_%04d", target, dirCount++); }
 
     // Ensure the end output path exists.
-    mkdir(outputPath);
+    mkdir(outputPath, 0777);
 
     // Need these to loop.
     const int subDirs = XenoDir_GetSubDirCount(dir);
@@ -66,7 +64,7 @@ static void extract_directory(XenoReader *reader, const XenoDir *dir, const char
 
         // Create this so we have it to print.
         char filePath[PATH_BUFFER_SIZE] = {0};
-        snprintf(filePath, PATH_BUFFER_SIZE, "%s/FILE_%i.bin", outputPath, i);
+        snprintf(filePath, PATH_BUFFER_SIZE, "%s/FILE_%04d.bin", outputPath, i + 1);
 
         // Print a message so it looks like important things are happening when we're all just playing video games and
         // waiting to die.

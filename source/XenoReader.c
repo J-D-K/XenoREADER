@@ -77,7 +77,6 @@ static const int DISC_STRING_LENGTH = 14;
 
 // Defined at bottom.
 static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *index);
-static void free_directory_tree(XenoDir *dir);
 
 XenoReader *XenoReader_Open(const char *path)
 {
@@ -166,6 +165,8 @@ XenoReader *XenoReader_Open(const char *path)
 
     for (int i = 0; i < tableBufferSize; i += 7)
     {
+        if (i + 7 > tableBufferSize) { break; }
+
         // What we're reading to.
         uint32_t sector = 0; // This is actually stored as a 24bit value.
         int32_t size    = 0;
@@ -194,23 +195,14 @@ XenoReader *XenoReader_Open(const char *path)
     // We need to start the root here. The rest are recursive.
     int index               = 0;
     const int fsArrayLength = DynamicArray_GetLength(fsArray);
-
-    FILE *debugFile = fopen("fsArray.txt", "w");
-    for (int i = 0; i < fsArrayLength; i++)
-    {
-        const FilesystemEntry *entry = (const FilesystemEntry *)DynamicArray_GetElementAt(fsArray, i);
-
-        fprintf(debugFile, "Entry[%i]:\n\tOffset?: %i\n\tSize: %i\n", i, entry->sector, entry->size);
-    }
-    fclose(debugFile);
-
     while (index < fsArrayLength)
     {
         const FilesystemEntry *entry = (const FilesystemEntry *)DynamicArray_GetElementAt(fsArray, index);
 
         // Negative size denotes a "directory".
         if (entry->size < 0) { read_array_to_directory(reader->root, fsArray, &index); }
-        else {
+        else
+        {
             // Add a new file.
             XenoFile *file = (XenoFile *)DynamicArray_New(reader->root->files);
 
@@ -227,7 +219,7 @@ XenoReader *XenoReader_Open(const char *path)
 
 Label_cleanup:
     if (tableBuffer) { free(tableBuffer); }
-    if (reader->root) { free_directory_tree(reader->root); }
+    if (reader->root) { XenoDir_Free(reader->root, true); }
     if (reader) { free(reader); }
     if (image) { fclose(image); }
 
@@ -240,7 +232,7 @@ void XenoReader_Close(XenoReader *reader)
     if (!reader) { return; }
 
     // Free the Filesystem tree.
-    if (reader->root) { free_directory_tree(reader->root); }
+    if (reader->root) { XenoDir_Free(reader->root, true); }
 
     // Only try to close the file if it's actually open.
     if (reader->image)
@@ -283,7 +275,7 @@ XenoBuffer *XenoReader_ReadFile(XenoReader *reader, const XenoFile *file)
     if (!buffer->data) { goto Label_cleanup; }
     buffer->size = file->size;
 
-    const int sectorCount = ceil((double)file->size / (double)DATA_SIZE);
+    const int sectorCount = (file->size + DATA_SIZE - 1) / DATA_SIZE;
 
     for (int i = 0; i < sectorCount; i++)
     {
@@ -332,7 +324,8 @@ static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *inde
 
         // Same as above.
         if (subEntry->size < 0 && !read_array_to_directory(subDir, array, index)) { return false; }
-        else {
+        else
+        {
             // Create new file entry.
             XenoFile *file = (XenoFile *)DynamicArray_New(subDir->files);
 
@@ -346,20 +339,4 @@ static bool read_array_to_directory(XenoDir *dir, DynamicArray *array, int *inde
     }
 
     return true;
-}
-
-static void free_directory_tree(XenoDir *dir)
-{
-    if (!dir) { return; }
-
-    if (dir->subDirs)
-    {
-        const int dirCount = DynamicArray_GetLength(dir->subDirs);
-        for (int i = 0; i < dirCount; i++)
-        {
-            free_directory_tree((XenoDir *)DynamicArray_GetElementAt(dir->subDirs, i));
-        }
-    }
-
-    XenoDir_Free(dir);
 }

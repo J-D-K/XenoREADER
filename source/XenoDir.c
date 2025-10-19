@@ -1,5 +1,6 @@
 #include "XenoDir.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
 #define __XENO_INTERNAL__
@@ -19,18 +20,27 @@ XenoDir *XenoDir_Create()
     return dir;
 
 Label_cleanup:
-    if (dir) { XenoDir_Free(dir); }
+    if (dir->subDirs) { DynamicArray_Free(dir->subDirs); }
+    if (dir->files) { DynamicArray_Free(dir->files); }
+    if (dir) { XenoDir_Free(dir, true); }
 
     return NULL;
 }
 
-void XenoDir_Free(XenoDir *dir)
+void XenoDir_Free(XenoDir *dir, bool isRoot)
 {
     if (!dir) { return; }
+
+    const int dirCount = DynamicArray_GetLength(dir->subDirs);
+    for (int i = 0; i < dirCount; i++)
+    {
+        XenoDir *subDir = (XenoDir *)DynamicArray_GetElementAt(dir->subDirs, i);
+        if (subDir) { XenoDir_Free(subDir, false); }
+    }
+
     if (dir->subDirs) { DynamicArray_Free(dir->subDirs); }
     if (dir->files) { DynamicArray_Free(dir->files); }
-
-    free(dir);
+    if (isRoot && dir) { free(dir); } // This feels like a bandaid, but it is what it is.
 }
 
 uint32_t XenoDir_GetSubDirCount(const XenoDir *dir) { return DynamicArray_GetLength(dir->subDirs); }

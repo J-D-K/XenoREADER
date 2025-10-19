@@ -17,7 +17,8 @@ XenoDir *XenoDir_Create();
 
 /// @brief Frees the XenoDir.
 /// @param dir Dir to free.
-void XenoDir_Free(XenoDir *dir);
+/// @param isRoot Whether or not the dir is the root of the Xenogears filesystem.
+void XenoDir_Free(XenoDir *dir, bool isRoot);
 
 /// @brief Returns the subdirectory count.
 /// @param dir Directory to get subdirectory count of.
