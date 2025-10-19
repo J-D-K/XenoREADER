@@ -12,7 +12,7 @@ The goal of XenoREADER is to provide a working C library, optionally with a C++ 
 
 **Disc Identification** – XenoREADER can reliably determine whether the image is Disc 1 or Disc 2.
 
-**Filesystem Parsing** - XenoREADER can read and parse the hidden filesystem Xenogears used instead of ISO-9660.
+**Filesystem Parsing** - XenoREADER can read and parse the hidden filesystem Xenogears uses instead of ISO-9660.
 
 **File Extraction** - XenoREADER can extract the contents of a Xenogears image.
 
