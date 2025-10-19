@@ -75,12 +75,10 @@ static void extract_directory(XenoReader *reader, const XenoDir *dir, const char
         snprintf(outputPath, PATH_BUFFER_SIZE, "%s/DISC_ROOT", target);
         ++dirCount;
     }
-    else {
-        snprintf(outputPath, PATH_BUFFER_SIZE, "%s/DIR_%04d", target, dirCount++);
-    }
+    else { snprintf(outputPath, PATH_BUFFER_SIZE, "%s/DIR_%04d", target, dirCount++); }
 
     // Ensure the end output path exists.
-    mkdir(outputPath);
+    create_directory(outputPath);
 
     // Need these to loop.
     const int subDirs = XenoDir_GetSubDirCount(dir);
